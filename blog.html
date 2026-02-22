@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research & Work Blog | Rajat Jaiswal</title>
+    <meta name="description" content="Blog posts and insights from AI research, engineering work, and professional experiences by Rajat Jaiswal.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .blog-grid {
+            display: grid;
+            gap: 20px;
+            margin-top: 40px;
+        }
+        
+        .blog-card {
+            padding: 28px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            transition: all var(--transition);
+            text-decoration: none;
+            display: block;
+        }
+        
+        .blog-card:hover {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+        
+        .blog-card .category {
+            font-size: 12px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: block;
+        }
+        
+        .blog-card h3 {
+            font-family: 'Bricolage Grotesque', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 12px;
+        }
+        
+        .blog-card p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 0;
+            line-height: 1.6;
+        }
+        
+        .blog-card .tag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        
+        .blog-card .tag {
+            font-size: 12px;
+            padding: 4px 12px;
+            background: var(--accent-light);
+            border-radius: 100px;
+            color: var(--accent);
+            font-weight: 500;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color var(--transition);
+        }
+        
+        .back-link:hover {
+            color: var(--accent);
+        }
+        
+        .back-link svg {
+            width: 18px;
+            height: 18px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">Rajat Jaiswal</a>
+            <div class="nav-links">
+                <a href="index.html#about" class="nav-link">About</a>
+                <a href="index.html#experience" class="nav-link">Experience</a>
+                <a href="index.html#skills" class="nav-link">Skills</a>
+                <a href="index.html#playground" class="nav-link">AI Playground</a>
+                <a href="blog.html" class="nav-link">Blog</a>
+            </div>
+            <div class="nav-actions">
+                <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main">
+        <section class="hero" style="padding-bottom: 40px;">
+            <div class="container-narrow">
+                <a href="index.html" class="back-link" style="margin-bottom: 32px; display: inline-flex;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+                    Back to Home
+                </a>
+                <span class="hero-badge">Research & Work</span>
+                <h1 class="hero-title" style="font-size: clamp(36px, 6vw, 56px);">Blog & Insights</h1>
+                <p class="hero-subtitle">
+                    Sharing experiences from building AI systems, research discoveries, and lessons learned from working with trillion-dollar enterprises.
+                </p>
+            </div>
+        </section>
+
+        <section class="section" style="padding-top: 40px;">
+            <div class="container-narrow">
+                <div class="blog-grid">
+                    <a href="blog/fl-communication-problem.html" class="blog-card">
+                        <span class="category">Federated Learning &middot; Research</span>
+                        <h3>The "Slowest Client" Problem: How Adaptive Compression is Rescuing Decentralized AI</h3>
+                        <p>Why static compression is holding back Federated Learning—and how adaptive distortion-aware protocols achieve up to 89% data reduction while preserving model accuracy.</p>
+                        <div class="tag-row">
+                            <span class="tag">Federated Learning</span>
+                            <span class="tag">Lossy Compression</span>
+                            <span class="tag">Distributed Systems</span>
+                            <span class="tag">Green AI</span>
+                        </div>
+                    </a>
+                    <a href="blog/beginners-guide-eblc.html" class="blog-card">
+                        <span class="category">Tutorial</span>
+                        <h3>A Beginner's Guide to Error-Bounded Lossy Compressors</h3>
+                        <p>Understanding SZ2, ZFP, TTHRESH, and FPZIP—the compression algorithms powering efficient scientific computing and distributed machine learning.</p>
+                        <div class="tag-row">
+                            <span class="tag">Tutorial</span>
+                            <span class="tag">Compression</span>
+                            <span class="tag">Scientific Computing</span>
+                        </div>
+                    </a>
+                    <div class="blog-card">
+                        <span class="category">Coming Soon</span>
+                        <h3>Building Production AI at Scale</h3>
+                        <p>Insights from deploying machine learning models for enterprise clients, including challenges, solutions, and lessons learned.</p>
+                        <div class="tag-row">
+                            <span class="tag">MLOps</span>
+                            <span class="tag">Enterprise AI</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-links">
+                <a href="https://github.com/onlinerj" target="_blank" class="footer-link">GitHub</a>
+                <a href="https://linkedin.com/in/rajatjw" target="_blank" class="footer-link">LinkedIn</a>
+                <a href="mailto:onlinerj@live.com" class="footer-link">Email</a>
+            </div>
+            <p class="footer-text">© <span id="year"></span> Rajat Jaiswal</p>
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Theme Toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        if (savedTheme === 'dark') htmlElement.setAttribute('data-theme', 'dark');
+        
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            if (newTheme === 'dark') htmlElement.setAttribute('data-theme', 'dark');
+            else htmlElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', newTheme);
+        });
+    </script>
+</body>
+</html>

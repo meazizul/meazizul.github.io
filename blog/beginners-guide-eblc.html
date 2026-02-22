@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Beginner's Guide to Error-Bounded Lossy Compressors | Rajat Jaiswal</title>
+    <meta name="description" content="Learn how error-bounded lossy compressors like SZ2, ZFP, TTHRESH, and FPZIP work—and why they matter for machine learning and scientific computing.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fafafa;
+            --bg-card: #ffffff;
+            --text: #171717;
+            --text-muted: #525252;
+            --accent: #0d9488;
+            --accent-light: #ccfbf1;
+            --border: #e5e5e5;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+            --transition: 0.2s ease;
+            --radius: 8px;
+            --radius-lg: 16px;
+            --green: #059669;
+            --red: #dc2626;
+            --blue: #2563eb;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0a0a0a;
+            --bg-card: #171717;
+            --text: #fafafa;
+            --text-muted: #a3a3a3;
+            --accent: #14b8a6;
+            --accent-light: rgba(20, 184, 166, 0.15);
+            --border: #262626;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+            --green: #10b981;
+            --red: #ef4444;
+            --blue: #3b82f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.8;
+            font-weight: 400;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        /* Header */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 48px;
+            transition: all var(--transition);
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        .back-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .header-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .theme-toggle:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .theme-toggle svg { width: 20px; height: 20px; }
+        .theme-toggle .sun-icon { display: block; }
+        .theme-toggle .moon-icon { display: none; }
+        [data-theme="dark"] .theme-toggle .sun-icon { display: none; }
+        [data-theme="dark"] .theme-toggle .moon-icon { display: block; }
+
+        .article-meta {
+            margin-bottom: 32px;
+        }
+
+        .article-meta .category {
+            font-size: 12px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+
+        .article-meta .date {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        h1 {
+            font-family: 'Bricolage Grotesque', Georgia, serif;
+            font-size: clamp(2rem, 6vw, 2.75rem);
+            font-weight: 600;
+            line-height: 1.2;
+            margin-bottom: 24px;
+            color: var(--text);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            font-weight: 300;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .tag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 48px;
+        }
+
+        .tag {
+            font-size: 12px;
+            padding: 6px 12px;
+            background: var(--accent-light);
+            border-radius: 100px;
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        /* Article Content */
+        article {
+            border-top: 1px solid var(--border);
+            padding-top: 48px;
+        }
+
+        article h2 {
+            font-family: 'Bricolage Grotesque', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 48px;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+
+        article h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+
+        article p {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        article strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        article ul, article ol {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            padding-left: 24px;
+        }
+
+        article li {
+            margin-bottom: 12px;
+        }
+
+        .highlight-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            padding: 24px;
+            border-radius: var(--radius);
+            margin: 32px 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .highlight-box p {
+            margin-bottom: 0;
+            font-size: 15px;
+        }
+
+        .highlight-box.info {
+            border-left-color: var(--blue);
+        }
+
+        .highlight-box.success {
+            border-left-color: var(--green);
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--accent-light);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: var(--accent);
+        }
+
+        pre {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            overflow-x: auto;
+            margin: 24px 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+
+        /* Compressor Cards */
+        .compressor-grid {
+            display: grid;
+            gap: 20px;
+            margin: 32px 0;
+        }
+
+        .compressor-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            transition: all var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .compressor-card:hover {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-md);
+        }
+
+        .compressor-card h4 {
+            font-family: 'Bricolage Grotesque', Georgia, serif;
+            font-size: 1.25rem;
+            color: var(--text);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .compressor-card .card-subtitle {
+            font-size: 13px;
+            color: var(--accent);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+
+        .compressor-card p {
+            font-size: 15px;
+            margin-bottom: 16px;
+        }
+
+        .compressor-card .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .compressor-card .feature {
+            font-size: 12px;
+            padding: 4px 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+        }
+
+        /* Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 32px 0;
+            font-size: 14px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-table th {
+            background: var(--bg-card);
+            color: var(--text);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .comparison-table td {
+            color: var(--text-muted);
+        }
+
+        .comparison-table tr:hover td {
+            background: var(--bg-card);
+        }
+
+        /* Diagram */
+        .diagram {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            margin: 32px 0;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .diagram-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .diagram-box {
+            padding: 16px 24px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .diagram-box.highlight {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .diagram-arrow {
+            color: var(--text-muted);
+            font-size: 20px;
+        }
+
+        .diagram-caption {
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 80px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        footer p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 48px 20px;
+            }
+
+            .diagram-flow {
+                flex-direction: column;
+            }
+
+            .diagram-arrow {
+                transform: rotate(90deg);
+            }
+
+            .comparison-table {
+                font-size: 12px;
+            }
+
+            .comparison-table th,
+            .comparison-table td {
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-nav">
+            <a href="../blog.html" class="back-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+                Back to Blog
+            </a>
+            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark/light mode">
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </button>
+        </div>
+
+        <div class="article-meta">
+            <span class="category">Tutorial</span>
+            <p class="date">December 15, 2025</p>
+        </div>
+
+        <h1>A Beginner's Guide to Error-Bounded Lossy Compressors</h1>
+        
+        <p class="subtitle">Understanding SZ2, ZFP, TTHRESH, and FPZIP—the compression algorithms powering efficient scientific computing and distributed machine learning.</p>
+
+        <div class="tag-row">
+            <span class="tag">Tutorial</span>
+            <span class="tag">Compression</span>
+            <span class="tag">Scientific Computing</span>
+            <span class="tag">ML Infrastructure</span>
+        </div>
+
+        <article>
+            <h2>What is Lossy Compression?</h2>
+            
+            <p>You're probably familiar with lossy compression from everyday life—JPEG images and MP3 audio files sacrifice some quality to dramatically reduce file size. The same principle applies to numerical data in scientific computing and machine learning.</p>
+
+            <p><strong>Lossy compression</strong> achieves higher compression ratios than lossless methods (like ZIP or GZIP) by allowing small, controlled errors in the reconstructed data. The key question is: <em>how much error is acceptable?</em></p>
+
+            <div class="highlight-box info">
+                <p><strong>Key Insight:</strong> In many ML and scientific applications, floating-point values contain more precision than is actually meaningful. Compressing away this "noise" can save 10-100x storage/bandwidth with negligible impact on results.</p>
+            </div>
+
+            <h2>Error-Bounded Lossy Compressors (EBLCs)</h2>
+
+            <p><strong>Error-Bounded Lossy Compressors</strong> give you precise control over the maximum error introduced during compression. Unlike general lossy compression where quality is often subjective, EBLCs provide mathematical guarantees.</p>
+
+            <h3>Types of Error Bounds</h3>
+
+            <ul>
+                <li><strong>Absolute Error Bound</strong> — The difference between original and decompressed values is at most ε<br>
+                <code>|original - decompressed| ≤ ε</code></li>
+                
+                <li><strong>Relative Error Bound</strong> — The error is proportional to the original value<br>
+                <code>|original - decompressed| / |original| ≤ ε</code></li>
+                
+                <li><strong>Point-wise Relative (PW_REL)</strong> — Relative bound that handles values near zero gracefully</li>
+            </ul>
+
+            <div class="diagram">
+                <div class="diagram-flow">
+                    <div class="diagram-box">Original Data<br><small>32-bit floats</small></div>
+                    <span class="diagram-arrow">→</span>
+                    <div class="diagram-box highlight">EBLC<br><small>with error bound ε</small></div>
+                    <span class="diagram-arrow">→</span>
+                    <div class="diagram-box">Compressed<br><small>~10-50x smaller</small></div>
+                    <span class="diagram-arrow">→</span>
+                    <div class="diagram-box">Decompressed<br><small>error ≤ ε</small></div>
+                </div>
+                <p class="diagram-caption">EBLC compression pipeline with guaranteed error bounds</p>
+            </div>
+
+            <h2>The Four Major EBLCs</h2>
+
+            <p>Let's explore the most widely-used error-bounded lossy compressors and understand how each one works:</p>
+
+            <div class="compressor-grid">
+                <div class="compressor-card">
+                    <h4>SZ2</h4>
+                    <p class="card-subtitle">Prediction-Based Compression</p>
+                    <p>SZ2 predicts each value based on its neighbors and stores either a quantized prediction error or the original value if the prediction fails. It adapts its predictor on-the-fly, making it excellent for data with local patterns.</p>
+                    <div class="features">
+                        <span class="feature">Adaptive Prediction</span>
+                        <span class="feature">Huffman Encoding</span>
+                        <span class="feature">Best for Smooth Data</span>
+                    </div>
+                </div>
+
+                <div class="compressor-card">
+                    <h4>ZFP</h4>
+                    <p class="card-subtitle">Block-Based Transform Coding</p>
+                    <p>ZFP divides data into fixed-size blocks (4×4×4 for 3D), applies an orthogonal transform, and uses embedded coding to progressively encode coefficients. Great for random-access decompression.</p>
+                    <div class="features">
+                        <span class="feature">Fixed-Size Blocks</span>
+                        <span class="feature">Random Access</span>
+                        <span class="feature">GPU-Friendly</span>
+                    </div>
+                </div>
+
+                <div class="compressor-card">
+                    <h4>TTHRESH</h4>
+                    <p class="card-subtitle">Tensor Decomposition</p>
+                    <p>TTHRESH uses Tucker decomposition to compress multidimensional arrays. It's particularly effective for visual data and tensors with strong correlations across dimensions.</p>
+                    <div class="features">
+                        <span class="feature">Tucker Decomposition</span>
+                        <span class="feature">Multi-dimensional</span>
+                        <span class="feature">Visual Data</span>
+                    </div>
+                </div>
+
+                <div class="compressor-card">
+                    <h4>FPZIP</h4>
+                    <p class="card-subtitle">Fast Floating-Point Compression</p>
+                    <p>FPZIP uses a simple prediction scheme combined with fast entropy coding. It prioritizes speed over compression ratio, making it ideal for streaming applications.</p>
+                    <div class="features">
+                        <span class="feature">Very Fast</span>
+                        <span class="feature">Low Overhead</span>
+                        <span class="feature">Streaming-Friendly</span>
+                    </div>
+                </div>
+            </div>
+
+            <h2>How SZ2 Works: A Closer Look</h2>
+
+            <p>Let's dive deeper into SZ2, the most commonly used EBLC in federated learning research:</p>
+
+            <h3>Step 1: Prediction</h3>
+            <p>SZ2 uses multiple predictors (Lorenzo, linear regression, etc.) and selects the best one for each data point:</p>
+
+            <pre><code>// Lorenzo predictor for 3D data
+predicted[i][j][k] = data[i-1][j][k] 
+                   + data[i][j-1][k] 
+                   + data[i][j][k-1] 
+                   - data[i-1][j-1][k] 
+                   - data[i-1][j][k-1] 
+                   - data[i][j-1][k-1] 
+                   + data[i-1][j-1][k-1]</code></pre>
+
+            <h3>Step 2: Quantization</h3>
+            <p>If the prediction error is within bounds, it's quantized to an integer:</p>
+
+            <pre><code>error = actual - predicted
+if |error| <= error_bound:
+    quantized = round(error / (2 * error_bound))
+else:
+    store original value (unpredictable)</code></pre>
+
+            <h3>Step 3: Encoding</h3>
+            <p>Quantized values are compressed using Huffman coding, exploiting the fact that small prediction errors are more common than large ones.</p>
+
+            <h2>Comparison: When to Use Each Compressor</h2>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Compressor</th>
+                        <th>Best For</th>
+                        <th>Speed</th>
+                        <th>Ratio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>SZ2</strong></td>
+                        <td>Smooth, correlated data</td>
+                        <td>Medium</td>
+                        <td>High</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ZFP</strong></td>
+                        <td>Random access needs</td>
+                        <td>Fast</td>
+                        <td>Medium</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TTHRESH</strong></td>
+                        <td>Multi-dimensional tensors</td>
+                        <td>Slow</td>
+                        <td>Very High</td>
+                    </tr>
+                    <tr>
+                        <td><strong>FPZIP</strong></td>
+                        <td>Speed-critical streaming</td>
+                        <td>Very Fast</td>
+                        <td>Low</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>EBLCs in Machine Learning</h2>
+
+            <p>Why do ML practitioners care about scientific compression algorithms? Several key applications:</p>
+
+            <h3>1. Federated Learning Communication</h3>
+            <p>Model updates (gradients or weights) transmitted between clients and servers can be compressed with EBLCs. Research shows compression ratios of 10-100x with minimal accuracy impact.</p>
+
+            <h3>2. Model Checkpointing</h3>
+            <p>Training large models requires frequent checkpoints. Compressing checkpoints with error bounds saves significant storage while preserving the ability to resume training.</p>
+
+            <h3>3. Gradient Compression</h3>
+            <p>In distributed training, gradient communication is often the bottleneck. EBLCs can compress gradients more effectively than simple quantization schemes.</p>
+
+            <div class="highlight-box success">
+                <p><strong>Real-World Results:</strong> In our federated learning research, using SZ2 with adaptive error bounds reduced communication by up to 67% compared to uncompressed baselines, with negligible impact on final model accuracy.</p>
+            </div>
+
+            <h2>Getting Started</h2>
+
+            <p>Ready to try EBLCs? Here are the main libraries:</p>
+
+            <ul>
+                <li><strong>SZ</strong> — <code>pip install pysz</code> or <a href="https://github.com/szcompressor/SZ" style="color: var(--accent);">GitHub</a></li>
+                <li><strong>ZFP</strong> — <code>pip install zfpy</code> or <a href="https://github.com/LLNL/zfp" style="color: var(--accent);">GitHub</a></li>
+                <li><strong>cuSZ</strong> — GPU-accelerated SZ for CUDA</li>
+            </ul>
+
+            <h3>Quick Example with SZ</h3>
+
+            <pre><code>import numpy as np
+import pysz
+
+# Create some data
+data = np.random.randn(1000, 1000).astype(np.float32)
+
+# Compress with relative error bound of 1e-3
+compressor = pysz.SZ(rel_err_bound=1e-3)
+compressed = compressor.compress(data)
+decompressed = compressor.decompress(compressed, data.shape)
+
+# Check compression ratio
+ratio = data.nbytes / len(compressed)
+print(f"Compression ratio: {ratio:.1f}x")</code></pre>
+
+            <h2>Key Takeaways</h2>
+
+            <ul>
+                <li><strong>EBLCs provide guaranteed error bounds</strong> — You control exactly how much precision is lost</li>
+                <li><strong>Different compressors suit different data</strong> — SZ2 for smooth data, ZFP for random access, FPZIP for speed</li>
+                <li><strong>10-100x compression is achievable</strong> — With often negligible impact on downstream tasks</li>
+                <li><strong>Growing importance in ML</strong> — Essential for efficient federated learning, checkpointing, and distributed training</li>
+            </ul>
+
+            <div class="highlight-box">
+                <p><strong>Next in this series:</strong> How we use distortion as a feedback signal to adaptively tune error bounds in federated learning—achieving better compression without sacrificing model accuracy.</p>
+            </div>
+        </article>
+
+        <footer>
+            <p>© <span id="year"></span> Rajat Jaiswal</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Theme Toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        if (savedTheme === 'dark') htmlElement.setAttribute('data-theme', 'dark');
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            htmlElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+    </script>
+</body>
+</html>

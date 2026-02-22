@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>From Fixed to Adaptive: A Smarter Way to Compress ML Model Updates | Rajat Jaiswal</title>
+    <meta name="description" content="Deep dive into client-specific adaptive tolerance algorithms for federated learning—using distortion as a feedback signal to optimize compression.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fafafa;
+            --bg-card: #ffffff;
+            --text: #171717;
+            --text-muted: #525252;
+            --accent: #0d9488;
+            --accent-light: #ccfbf1;
+            --border: #e5e5e5;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+            --transition: 0.2s ease;
+            --radius: 8px;
+            --radius-lg: 16px;
+            --green: #059669;
+            --red: #dc2626;
+            --blue: #2563eb;
+            --purple: #7c3aed;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0a0a0a;
+            --bg-card: #171717;
+            --text: #fafafa;
+            --text-muted: #a3a3a3;
+            --accent: #14b8a6;
+            --accent-light: rgba(20, 184, 166, 0.15);
+            --border: #262626;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+            --green: #10b981;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --purple: #8b5cf6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.8;
+            font-weight: 400;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        /* Header */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 48px;
+            transition: all var(--transition);
+        }
+
+        .back-link:hover {
+            color: var(--accent);
+        }
+
+        .back-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .header-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .theme-toggle:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .theme-toggle svg { width: 20px; height: 20px; }
+        .theme-toggle .sun-icon { display: block; }
+        .theme-toggle .moon-icon { display: none; }
+        [data-theme="dark"] .theme-toggle .sun-icon { display: none; }
+        [data-theme="dark"] .theme-toggle .moon-icon { display: block; }
+
+        .article-meta {
+            margin-bottom: 32px;
+        }
+
+        .article-meta .category {
+            font-size: 12px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+
+        .article-meta .date {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        h1 {
+            font-family: 'Bricolage Grotesque', Georgia, serif;
+            font-size: clamp(2rem, 6vw, 2.75rem);
+            font-weight: 600;
+            line-height: 1.2;
+            margin-bottom: 24px;
+            color: var(--text);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            font-weight: 300;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .tag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 48px;
+        }
+
+        .tag {
+            font-size: 12px;
+            padding: 6px 12px;
+            background: var(--accent-light);
+            border-radius: 100px;
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        /* Article Content */
+        article {
+            border-top: 1px solid var(--border);
+            padding-top: 48px;
+        }
+
+        article h2 {
+            font-family: 'Bricolage Grotesque', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 48px;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+
+        article h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+
+        article p {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        article strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        article em {
+            color: var(--text);
+            font-style: italic;
+        }
+
+        article ul, article ol {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            padding-left: 24px;
+        }
+
+        article li {
+            margin-bottom: 12px;
+        }
+
+        .highlight-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            padding: 24px;
+            border-radius: var(--radius);
+            margin: 32px 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .highlight-box p {
+            margin-bottom: 0;
+            font-size: 15px;
+        }
+
+        .highlight-box.insight {
+            border-left-color: var(--purple);
+        }
+
+        .highlight-box.question {
+            border-left-color: var(--blue);
+        }
+
+        .highlight-box.success {
+            border-left-color: var(--green);
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--accent-light);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: var(--accent);
+        }
+
+        pre {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            overflow-x: auto;
+            margin: 24px 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+
+        /* Algorithm Box */
+        .algorithm-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            margin: 32px 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .algorithm-box h4 {
+            font-family: 'Bricolage Grotesque', Georgia, serif;
+            font-size: 1.1rem;
+            color: var(--text);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        .algorithm-step {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+            padding-top: 4px;
+        }
+
+        .step-content strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .step-content p {
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+
+        /* Concept Diagram */
+        .concept-diagram {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            margin: 32px 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .region-visual {
+            display: flex;
+            align-items: stretch;
+            height: 120px;
+            margin: 24px 0;
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .region {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .region-safe {
+            background: rgba(5, 150, 105, 0.15);
+            border: 1px solid var(--green);
+            flex: 2;
+        }
+
+        .region-transition {
+            background: var(--accent-light);
+            border: 1px solid var(--accent);
+            flex: 1;
+        }
+
+        .region-danger {
+            background: rgba(220, 38, 38, 0.15);
+            border: 1px solid var(--red);
+            flex: 1;
+        }
+
+        .region-label {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .region-safe .region-label { color: var(--green); }
+        .region-transition .region-label { color: var(--accent); }
+        .region-danger .region-label { color: var(--red); }
+
+        .region-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .axis-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .diagram-caption {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 16px;
+        }
+
+        /* Comparison */
+        .comparison-visual {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 32px 0;
+        }
+
+        .comparison-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .comparison-card h5 {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        .comparison-card.fixed h5 {
+            color: var(--text-muted);
+        }
+
+        .comparison-card.adaptive h5 {
+            color: var(--accent);
+        }
+
+        .comparison-card ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .comparison-card li {
+            font-size: 14px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-card li:last-child {
+            border-bottom: none;
+        }
+
+        .icon-x {
+            color: var(--red);
+        }
+
+        .icon-check {
+            color: var(--green);
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 80px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        footer p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 48px 20px;
+            }
+
+            .comparison-visual {
+                grid-template-columns: 1fr;
+            }
+
+            .region-visual {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .region {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-nav">
+            <a href="../blog.html" class="back-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+                Back to Blog
+            </a>
+            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark/light mode">
+                <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </button>
+        </div>
+
+        <div class="article-meta">
+            <span class="category">Research Deep-Dive</span>
+            <p class="date">December 15, 2025</p>
+        </div>
+
+        <h1>From Fixed to Adaptive: A Smarter Way to Compress ML Model Updates</h1>
+        
+        <p class="subtitle">Why a one-size-fits-all error bound doesn't work for heterogeneous federated learning systems—and how distortion-driven feedback enables client-specific optimization.</p>
+
+        <div class="tag-row">
+            <span class="tag">Research</span>
+            <span class="tag">Federated Learning</span>
+            <span class="tag">Adaptive Algorithms</span>
+            <span class="tag">Optimization</span>
+        </div>
+
+        <article>
+            <h2>The Problem with Fixed Error Bounds</h2>
+            
+            <p>In my <a href="fl-communication-problem.html" style="color: var(--accent);">previous post</a>, I introduced how Error-Bounded Lossy Compressors (EBLCs) can dramatically reduce communication in federated learning. The standard approach uses a fixed error bound—typically <code>10⁻²</code> for relative mode—across all clients and all training rounds.</p>
+
+            <p>But here's the question that drove our research:</p>
+
+            <div class="highlight-box question">
+                <p><strong>Is a fixed error bound really optimal?</strong> In heterogeneous FL systems with varying client data distributions, network conditions, and model convergence states—shouldn't compression be adaptive?</p>
+            </div>
+
+            <p>The answer, as we discovered, is a resounding <em>yes</em>. A fixed bound is leaving significant compression gains on the table.</p>
+
+            <h2>The Core Insight: Distortion as a Proxy</h2>
+
+            <p>The key breakthrough was recognizing that <strong>distortion</strong>—the error introduced by compression—follows predictable patterns during training. More importantly, there exist <em>operational regions</em> where we can compress more aggressively without hurting model accuracy.</p>
+
+            <div class="concept-diagram">
+                <h4 style="font-family: 'Bricolage Grotesque', Georgia, serif; margin-bottom: 16px; font-weight: 600;">Operational Regions in EBLC Compression</h4>
+                <div class="region-visual">
+                    <div class="region region-safe">
+                        <span class="region-label">Safe Zone</span>
+                        <span class="region-desc">Aggressive compression OK</span>
+                    </div>
+                    <div class="region region-transition">
+                        <span class="region-label">Transition</span>
+                        <span class="region-desc">Monitor closely</span>
+                    </div>
+                    <div class="region region-danger">
+                        <span class="region-label">Danger</span>
+                        <span class="region-desc">Back off!</span>
+                    </div>
+                </div>
+                <div class="axis-label">
+                    <span>← Lower Distortion</span>
+                    <span>Higher Distortion →</span>
+                </div>
+                <p class="diagram-caption">Model accuracy remains stable in the safe zone, degrades gradually in transition, and drops sharply in the danger zone.</p>
+            </div>
+
+            <p>This observation is powerful because it means we don't need to directly measure accuracy (which requires a validation set and adds latency). Instead, we can use <strong>distortion as a real-time feedback signal</strong> to guide compression decisions.</p>
+
+            <h2>Why Fixed Bounds Fail</h2>
+
+            <p>Consider what happens with a fixed <code>10⁻²</code> error bound across different scenarios:</p>
+
+            <div class="comparison-visual">
+                <div class="comparison-card fixed">
+                    <h5>Fixed Bound Approach</h5>
+                    <ul>
+                        <li><span class="icon-x">✗</span> Same bound for all clients</li>
+                        <li><span class="icon-x">✗</span> Ignores data heterogeneity</li>
+                        <li><span class="icon-x">✗</span> No adaptation during training</li>
+                        <li><span class="icon-x">✗</span> Over-compresses some, under-compresses others</li>
+                    </ul>
+                </div>
+                <div class="comparison-card adaptive">
+                    <h5>Adaptive Approach</h5>
+                    <ul>
+                        <li><span class="icon-check">✓</span> Per-client error bounds</li>
+                        <li><span class="icon-check">✓</span> Responds to local data patterns</li>
+                        <li><span class="icon-check">✓</span> Adjusts based on training progress</li>
+                        <li><span class="icon-check">✓</span> Maximizes compression within safe region</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>The Heterogeneity Problem</h3>
+
+            <p>Federated learning clients are inherently diverse:</p>
+
+            <ul>
+                <li><strong>Data distribution</strong> — Client A might have smooth, predictable gradients while Client B has noisy, high-variance updates</li>
+                <li><strong>Model state</strong> — Early in training, gradients are large and structured; later, they become small and noisy</li>
+                <li><strong>Layer differences</strong> — Convolutional layers compress differently than fully-connected layers</li>
+            </ul>
+
+            <p>A fixed bound that works well for one client may be too conservative for another (wasting bandwidth) or too aggressive (hurting accuracy).</p>
+
+            <h2>The Adaptive Algorithm</h2>
+
+            <p>Our algorithm continuously monitors distortion and adjusts compression parameters to keep each client within the optimal operating region.</p>
+
+            <div class="algorithm-box">
+                <h4>Client-Specific Adaptive Tolerance Algorithm</h4>
+                
+                <div class="algorithm-step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <strong>Initialize</strong>
+                        <p>Start with a conservative error bound (e.g., 10⁻³) for each client</p>
+                    </div>
+                </div>
+
+                <div class="algorithm-step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <strong>Compress & Measure</strong>
+                        <p>Compress the model update and compute distortion (MSE between original and decompressed)</p>
+                    </div>
+                </div>
+
+                <div class="algorithm-step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <strong>Evaluate Region</strong>
+                        <p>Compare distortion against learned thresholds to determine current operating region</p>
+                    </div>
+                </div>
+
+                <div class="algorithm-step">
+                    <span class="step-number">4</span>
+                    <div class="step-content">
+                        <strong>Adapt</strong>
+                        <p>If in safe zone → increase error bound (more compression). If in danger zone → decrease error bound (less compression)</p>
+                    </div>
+                </div>
+
+                <div class="algorithm-step">
+                    <span class="step-number">5</span>
+                    <div class="step-content">
+                        <strong>Repeat</strong>
+                        <p>Continue adapting each round, converging to optimal bounds per client</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3>The Feedback Loop</h3>
+
+            <p>The core idea is simple: <strong>distortion tells us how much headroom we have for compression</strong>. When distortion is low (safe zone), we increase the error bound for more aggressive compression. When distortion exceeds safety thresholds, we back off to preserve accuracy.</p>
+
+            <p>In practice, we use smoothing techniques and momentum to prevent oscillation between regions.</p>
+
+            <h2>Finding the Thresholds</h2>
+
+            <p>A natural question: how do we determine the safe/transition/danger thresholds?</p>
+
+            <div class="highlight-box insight">
+                <p><strong>Key Finding:</strong> These thresholds are remarkably stable across different datasets and model architectures when using SZ2 in relative error mode. This means we can learn them once and apply broadly.</p>
+            </div>
+
+            <p>Our approach:</p>
+
+            <ol>
+                <li><strong>Offline profiling</strong> — Run experiments sweeping error bounds from 10⁻⁴ to 10⁻¹, measuring both compression ratio and final accuracy</li>
+                <li><strong>Identify knee points</strong> — Find where accuracy starts degrading vs. error bound</li>
+                <li><strong>Map to distortion</strong> — Convert error bound thresholds to distortion thresholds</li>
+            </ol>
+
+            <p>We found distinct "cliff" regions where accuracy drops sharply, and these thresholds can be learned through offline profiling and applied broadly.</p>
+
+            <h2>Handling Edge Cases</h2>
+
+            <h3>The BatchNorm Problem</h3>
+
+            <p>One challenge we encountered: <strong>BatchNorm layers break distortion-based feedback</strong>.</p>
+
+            <p>Why? BatchNorm parameters (gamma, beta) are often very small values. When compressed with relative error bounds, the absolute error is tiny, but the relative error becomes disproportionately large. This produces misleadingly high MSE that skews the feedback signal.</p>
+
+            <p><strong>Solution:</strong> Skip compressing BatchNorm layers entirely. They're typically a tiny fraction of total parameters, so the compression gain is minimal anyway.</p>
+
+            <h3>Early Training Instability</h3>
+
+            <p>During the first few rounds of training, gradients can be chaotic. We address this with:</p>
+
+            <ul>
+                <li>A <strong>warmup period</strong> using conservative bounds</li>
+                <li><strong>Exponential moving average</strong> of distortion to smooth out spikes</li>
+                <li><strong>Rate limiting</strong> on how fast bounds can change</li>
+            </ul>
+
+            <h2>Results: The Payoff</h2>
+
+            <p>Compared to fixed error bound baselines, our adaptive algorithm achieved <strong>significant additional communication reductions</strong> across a variety of architectures:</p>
+
+            <ul>
+                <li><strong>CNNs</strong> — Substantial reductions on standard image classification benchmarks</li>
+                <li><strong>Deep Networks (ResNet, AlexNet, MobileNet)</strong> — Consistent improvements</li>
+                <li><strong>Vision Transformers</strong> — Demonstrates generalization beyond CNNs</li>
+                <li><strong>Sequence Models (LSTM)</strong> — Applicable to different modalities</li>
+            </ul>
+
+            <p>All while maintaining accuracy comparable to uncompressed baselines.</p>
+
+            <div class="highlight-box success">
+                <p><strong>The Trade-off:</strong> Any minor accuracy drop is a direct trade-off for substantial bandwidth savings. In resource-constrained FL deployments, this trade-off is almost always worth it.</p>
+            </div>
+
+            <h2>Why This Matters Beyond FL</h2>
+
+            <p>The principles here extend to other domains:</p>
+
+            <ul>
+                <li><strong>Model checkpointing</strong> — Adaptively compress checkpoints based on training phase</li>
+                <li><strong>Gradient compression in data-parallel training</strong> — Per-worker adaptive bounds</li>
+                <li><strong>Edge deployment</strong> — Adaptive compression for bandwidth-constrained inference</li>
+            </ul>
+
+            <p>The core insight—<em>using domain-specific feedback signals to guide compression</em>—is broadly applicable.</p>
+
+            <h2>Key Takeaways</h2>
+
+            <ol>
+                <li><strong>Fixed error bounds are suboptimal</strong> for heterogeneous FL systems</li>
+                <li><strong>Distortion is a reliable proxy</strong> for compression quality without needing ground-truth accuracy</li>
+                <li><strong>Operational regions exist</strong> where aggressive compression doesn't hurt model performance</li>
+                <li><strong>Simple feedback loops work</strong> — no complex optimization needed</li>
+                <li><strong>Significant additional savings</strong> are achievable beyond already-compressed baselines</li>
+            </ol>
+
+            <div class="highlight-box">
+                <p><strong>Note:</strong> This article presents conceptual insights from ongoing research currently under peer review. Full algorithmic details and comprehensive benchmarks will be shared upon publication.</p>
+            </div>
+        </article>
+
+        <footer>
+            <p>© <span id="year"></span> Rajat Jaiswal</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Theme Toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        if (savedTheme === 'dark') htmlElement.setAttribute('data-theme', 'dark');
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            htmlElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+    </script>
+</body>
+</html>
