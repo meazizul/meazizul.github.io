@@ -1912,7 +1912,7 @@ async function sendMessage() {
         const chatbotCloseBtn = document.getElementById('chatbot-close-btn');
         if (chatbotCloseBtn) {
             chatbotCloseBtn.addEventListener('click', () => {
-                chatbotContainer.classList.remove('open');
+                chatbotWindow.classList.remove('open');
             });
         }
 
