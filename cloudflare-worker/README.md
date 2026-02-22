@@ -16,7 +16,7 @@ This Cloudflare Worker proxies requests to Google's Gemini API, enabling your po
 1. Create a free account at [Cloudflare](https://dash.cloudflare.com/)
 2. Go to **Workers & Pages** in the sidebar
 3. Click **Create Application** → **Create Worker**
-4. Give it a name (e.g., `rajat-chatbot`)
+4. Give it a name (e.g., `azizul-chatbot`)
 5. Click **Deploy** (with the default code)
 6. Click **Edit Code** and replace everything with the contents of `worker.js`
 7. Click **Deploy**
@@ -35,7 +35,7 @@ This Cloudflare Worker proxies requests to Google's Gemini API, enabling your po
 
 Your worker URL will be something like:
 ```
-https://rajat-chatbot.your-subdomain.workers.dev
+https://azizul-chatbot.your-subdomain.workers.dev
 ```
 
 You can find it on your worker's overview page.
@@ -45,13 +45,13 @@ You can find it on your worker's overview page.
 In `js/main.js`, find this line near the chatbot section:
 
 ```javascript
-const CHATBOT_WORKER_URL = ''; // e.g., 'https://rajat-chatbot.your-subdomain.workers.dev'
+const CHATBOT_WORKER_URL = ''; // e.g., 'https://azizul-chatbot.your-subdomain.workers.dev'
 ```
 
 Replace with your worker URL:
 
 ```javascript
-const CHATBOT_WORKER_URL = 'https://rajat-chatbot.your-subdomain.workers.dev';
+const CHATBOT_WORKER_URL = 'https://azizul-chatbot.your-subdomain.workers.dev';
 ```
 
 ### 6. Test It!
