@@ -1908,6 +1908,15 @@ async function sendMessage() {
     if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
 }
 
+        // Close button (mobile)
+        const chatbotCloseBtn = document.getElementById('chatbot-close-btn');
+        if (chatbotCloseBtn) {
+            chatbotCloseBtn.addEventListener('click', () => {
+                chatbotContainer.classList.remove('open');
+            });
+        }
+
+
 if (chatbotSend) chatbotSend.addEventListener('click', sendMessage);
 if (chatbotInput) chatbotInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
 
