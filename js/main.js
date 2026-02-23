@@ -1909,14 +1909,14 @@ async function sendMessage() {
 }
 // Close chatbot when clicking outside
   if (chatbotCloseBtn && chatbotContainer) {
-    chatbotCloseBtn.addEventListener('click', function (e) {
+    chatbotCloseBtn.addEventListener('pointerdown', function (e) {
         e.stopPropagation();
         chatbotContainer.classList.remove('open');
     });
 }
 //Toggle chatbot visibility       
 if (chatbotToggle && chatbotContainer) {
-    chatbotToggle.addEventListener('click', function () {
+    chatbotToggle.addEventListener('pointerdown', function () {
         chatbotContainer.classList.toggle('open');
     });
 }
