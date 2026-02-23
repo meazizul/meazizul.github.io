@@ -1907,16 +1907,17 @@ async function sendMessage() {
 
     if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
 }
-// Close chatbot when clicking outside
-  if (chatbotCloseBtn && chatbotContainer) {
-    chatbotCloseBtn.addEventListener('pointerdown', function (e) {
-        e.stopPropagation();
+//Chatbot Closing
+const chatbotCloseBtn = document.getElementById('chatbot-close-btn');
+if (chatbotCloseBtn) {
+    chatbotCloseBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevents the click from bubbling
         chatbotContainer.classList.remove('open');
     });
 }
-//Toggle chatbot visibility       
-if (chatbotToggle && chatbotContainer) {
-    chatbotToggle.addEventListener('pointerdown', function () {
+// Toggle
+if (chatbotToggle) {
+    chatbotToggle.addEventListener('click', () => {
         chatbotContainer.classList.toggle('open');
     });
 }
